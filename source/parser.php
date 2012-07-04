@@ -12,13 +12,14 @@ define('PPP_UNKNOWN',     208);
 define('PPP_RESERVED',    209);
 define('PPP_BLOCKQUOTES', 210);
 define('PPP_BOOLEAN',     211);
+define('PPP_STATIC_SELF', 212);
 
 // States
 define('PPP_BRACKET_ARRAY', 301);
 define('PPP_BRACKET_PROP',  302);
 
 $punctuation = array(':', '(', ',', ')', '.', '=', '->', '[', ']', '+', '<<', '-');
-$reserved_words = array('public', 'class', 'extends', 'private', 'else', 'elif', 'end', 'if', 'static', 'def', 'new');
+$reserved_words = array('public', 'class', 'extends', 'const', 'private', 'else', 'elif', 'end', 'if', 'static', 'def', 'new');
 $booleans = array('yes', 'no', 'on', 'off', 'nil', 'none', 'true', 'false');
 $synonyms = array(
     'on'   => 'true',
@@ -72,6 +73,11 @@ function identify_token($str) {
     // Barewords
     if (preg_match('/^[a-zA-Z]/', $str)) {
         return array($str, PPP_BAREWORD, 'PPP_BAREWORD');
+    }
+
+    // Static self
+    if (preg_match('/^@@\$?[a-zA-Z_]+$/', $str)) {
+        return array($str, PPP_STATIC_SELF, 'PPP_STATIC_SELF');
     }
 
     // Self 
@@ -190,7 +196,7 @@ foreach ($lines as $line) {
             } else {
                 $rewrites[] = $token[0];
             }
-            if ($next_token && ($next_token[1] === PPP_STRING || $next_token[1] === PPP_BOOLEAN || $next_token[1] === PPP_BAREWORD || $next_token[1] === PPP_VARIABLE || $next_token[1] === PPP_SELF || $next_token[1] === PPP_PROPERTY)) {
+            if ($next_token && ($next_token[1] === PPP_STRING || $next_token[1] === PPP_STATIC_SELF || $next_token[1] === PPP_BOOLEAN || $next_token[1] === PPP_BAREWORD || $next_token[1] === PPP_VARIABLE || $next_token[1] === PPP_SELF || $next_token[1] === PPP_PROPERTY)) {
                 $rewrites[] = '(';
                 $open_stack[] = ')';
             }
@@ -267,6 +273,10 @@ foreach ($lines as $line) {
                     $rewrites[] = $token[0];
                 }
             }
+            break;
+
+        case PPP_STATIC_SELF:
+            $rewrites[] = str_replace('@@', 'self::', $token[0]);
             break;
 
         case PPP_PUNCTUATION:

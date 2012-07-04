@@ -1,6 +1,10 @@
 
 class Foo extends Bar
 
+  const SOME_CONST = 'foo'
+
+  static $static_property = 5
+
   def __construct()
     @name = 'russ'
   end
@@ -10,11 +14,15 @@ class Foo extends Bar
     $var = 'single quoted string'
     $var.supports.dotNotation = "also"."supports".'string'.$concatenation
 
+    $name = func @@SOME_CONST
+    $name = func @@$static_property
+
     $array_style_one = ['list', 'of', 4, $things]
     $nested_arrays = ['stuff', $with, ['stuff': $between]]
     $arrays = ['name' : 'russ', 'phone_number' : '1800flowers']
     $arrays[$foo] = 'bar'
     $var.supports $dotNotation, 'for functions!'
+    << $x < $y ? yes : no
   end
 
   def funcWithArg($x = 23)
