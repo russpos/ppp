@@ -1,0 +1,23 @@
+
+class Foo extends Bar
+
+  def __construct()
+    @name = 'russ'
+  end
+
+  private def doSomething()
+    @has @nested "function calls!", 12.4
+    $var = 'single quoted string'
+  end
+
+  def funcWithArg($x = 23)
+    if @variable 'return value', $x
+        << 24
+    elif 23 + 34 > 12
+        << 12
+    else
+        << 6
+    end
+  end
+
+end
