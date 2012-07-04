@@ -10,9 +10,19 @@ define('PPP_PROPERTY',    207);
 define('PPP_UNKNOWN',     208);
 define('PPP_RESERVED',    209);
 define('PPP_BLOCKQUOTES', 210);
+define('PPP_BOOLEAN',     211);
 
 $punctuation = array(':', '(', ',', ')', '.', '=', '->', '+', '<<', '-');
 $reserved_words = array('public', 'class', 'extends', 'private', 'else', 'elif', 'end', 'if', 'static', 'def', 'new');
+$booleans = array('yes', 'no', 'on', 'off', 'nil', 'none', 'true', 'false');
+$synonyms = array(
+    'on'   => 'true',
+    'yes'  => 'true',
+    'off'  => 'false',
+    'no'   => 'false',
+    'nil'  => 'null',
+    'none' => 'null',
+);
 
 function interlock($parts, $with) {
     $locks = array();
@@ -24,7 +34,8 @@ function interlock($parts, $with) {
 }
 
 function identify_token($str) {
-    global $punctuation, $reserved_words;
+    global $punctuation, $reserved_words, $booleans;
+
     $trimmed = trim($str);
 
     if (empty($str)) {
@@ -33,6 +44,10 @@ function identify_token($str) {
 
     if ($trimmed == '###') {
         return array($str, PPP_BLOCKQUOTES, 'PPP_BLOCKQUOTES');
+    }
+
+    if (in_array($trimmed, $booleans)) {
+        return array($str, PPP_BOOLEAN, 'PPP_BOOLEAN');
     }
 
     // Whitespace
@@ -103,6 +118,7 @@ class PPP_Parser {
 
 public function parse($content) {
 
+
 $content = preg_replace("/\s*\|\n\s*/", ' ', $content);
 $lines = explode("\n", $content);
 
@@ -112,6 +128,8 @@ $indents = 0;
 $in_block_quotes = false;
 
 foreach ($lines as $line) {
+    global $synonyms;
+    $synonym_list = array_keys($synonyms);
     $tokens = tokenizer($line);
     $rewrites = array();
     $cur_token = 0;
@@ -165,7 +183,7 @@ foreach ($lines as $line) {
             } else {
                 $rewrites[] = $token[0];
             }
-            if ($next_token && ($next_token[1] === PPP_STRING || $next_token[1] === PPP_BAREWORD || $next_token[1] === PPP_VARIABLE || $next_token[1] === PPP_SELF || $next_token[1] === PPP_PROPERTY)) {
+            if ($next_token && ($next_token[1] === PPP_STRING || $next_token[1] === PPP_BOOLEAN || $next_token[1] === PPP_BAREWORD || $next_token[1] === PPP_VARIABLE || $next_token[1] === PPP_SELF || $next_token[1] === PPP_PROPERTY)) {
                 $rewrites[] = '(';
                 $open_stack[] = ')';
             }
@@ -178,56 +196,69 @@ foreach ($lines as $line) {
             }
             $rewrites[] = $token[0];
             break;
-        case PPP_RESERVED:
-            switch ($token[0]) {
-            case '(':
-                $open_stack[] = ')';
-                $rewrites[] = '(';
-                break;
-            case ')':
-                array_pop($open_stack);
-                $rewrites[] = ')';
-                break;
 
-            case 'end':
-                array_pop($rewrites);
-                $indents--;
-                $rewrites[] = tabs($indents);
-                $rewrites[] = '}';
-                $end = true;
-                break;
-
-            case 'if':
-                $rewrites[] = 'if (';
-                $open_stack[] = ')';
-                $ends_curly = true;
-                break;
-            case 'def':
-                $rewrites[] = 'function';
-                $ends_curly = true;
-                break;
-
-            case 'else':
-                array_pop($rewrites);
-                $indents--;
-                $rewrites[] = tabs($indents);
-                $rewrites[] = '} else';
-                $ends_curly = true;
-                break;
-
-            case 'elif':
-                array_pop($rewrites);
-                $indents--;
-                $rewrites[] = tabs($indents);
-                $rewrites[] = '} else if (';
-                $open_stack[] = ')';
-                $ends_curly = true;
-                break;
-
-            case 'class':
-                $ends_curly = true;
-            default:
+        case PPP_BOOLEAN:
+            if (in_array($token[0], $synonym_list)) {
+                $rewrites[] = $synonyms[$token[0]];
+            } else {
                 $rewrites[] = $token[0];
+            }
+            break;
+
+        case PPP_RESERVED:
+            if (in_array($token[0], $synonym_list)) {
+                $rewrites[] = $synonyms[$token[0]];
+            } else {
+                switch ($token[0]) {
+                case '(':
+                    $open_stack[] = ')';
+                    $rewrites[] = '(';
+                    break;
+                case ')':
+                    array_pop($open_stack);
+                    $rewrites[] = ')';
+                    break;
+
+                case 'end':
+                    array_pop($rewrites);
+                    $indents--;
+                    $rewrites[] = tabs($indents);
+                    $rewrites[] = '}';
+                    $end = true;
+                    break;
+
+                case 'if':
+                    $rewrites[] = 'if (';
+                    $open_stack[] = ')';
+                    $ends_curly = true;
+                    break;
+                case 'def':
+                    $rewrites[] = 'function';
+                    $ends_curly = true;
+                    break;
+
+                case 'else':
+                    array_pop($rewrites);
+                    $indents--;
+                    $rewrites[] = tabs($indents);
+                    $rewrites[] = '} else';
+                    $ends_curly = true;
+                    break;
+
+                case 'elif':
+                    array_pop($rewrites);
+                    $indents--;
+                    $rewrites[] = tabs($indents);
+                    $rewrites[] = '} else if (';
+                    $open_stack[] = ')';
+                    $ends_curly = true;
+                    break;
+
+                case 'class':
+                    $ends_curly = true;
+                default:
+                    $rewrites[] = $token[0];
+                }
             }
             break;
 

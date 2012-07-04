@@ -14,6 +14,11 @@ class Foo extends Bar
   end
 
   def funcWithArg($x = 23)
+    $do = ($foo > 'barf') ? true : false
+
+    $barf = new BarfMachine 'test'
+    $barf.turnMachine off
+
     if @variable 'return value', $x
         << 24
     elif 23 + 34 > 12

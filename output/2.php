@@ -15,6 +15,11 @@ class Foo extends Bar {
     }
 
     function funcWithArg($x = 23) {
+        $do = ($foo > 'barf') ? true : false;
+
+        $barf = new BarfMachine('test');
+        $barf->turnMachine(false);
+
         if ($this->variable('return value', $x)) {
             return 24;
         } else if (23 + 34 > 12) {
