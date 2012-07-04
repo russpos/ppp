@@ -9,6 +9,9 @@ class Foo extends Bar {
     private function doSomething() {
         $this->has($this->nested("function calls!", 12.4));
         $var = 'single quoted string';
+        $var->supports->dotNotation = "also"."supports".'string'.$concatenation;
+
+        $var->supports($dotNotation, 'for functions!');
     }
 
     function funcWithArg($x = 23) {

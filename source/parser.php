@@ -233,6 +233,13 @@ foreach ($lines as $line) {
 
         case PPP_PUNCTUATION:
             switch ($token[0]) {
+            case '.':
+                if ($next_token[1] === PPP_BAREWORD) {
+                    $rewrites[] = '->';
+                } else {
+                    $rewrites[] = $token[0];
+                }
+                break;
             case '<<':
                 $rewrites[] = 'return';
                 break;

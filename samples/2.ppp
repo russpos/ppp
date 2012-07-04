@@ -8,6 +8,9 @@ class Foo extends Bar
   private def doSomething()
     @has @nested "function calls!", 12.4
     $var = 'single quoted string'
+    $var.supports.dotNotation = "also"."supports".'string'.$concatenation
+
+    $var.supports $dotNotation, 'for functions!'
   end
 
   def funcWithArg($x = 23)
