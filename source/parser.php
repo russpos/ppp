@@ -1,34 +1,11 @@
 <?php
-// Tokens
-define('PPP_BAREWORD',    200);
-define('PPP_VARIABLE',    201);
-define('PPP_PUNCTUATION', 202);
-define('PPP_SELF',        203);
-define('PPP_STRING',      204);
-define('PPP_WHITESPACE',  205);
-define('PPP_INDENTATION', 206);
-define('PPP_PROPERTY',    207);
-define('PPP_UNKNOWN',     208);
-define('PPP_RESERVED',    209);
-define('PPP_BLOCKQUOTES', 210);
-define('PPP_BOOLEAN',     211);
-define('PPP_STATIC_SELF', 212);
+
+require_once 'globals.php';
+require_once 'tokens.php';
 
 // States
 define('PPP_BRACKET_ARRAY', 301);
 define('PPP_BRACKET_PROP',  302);
-
-$punctuation = array(':', '(', ',', ')', '.', '=', '->', '[', ']', '+', '<<', '-');
-$reserved_words = array('public', 'class', 'extends', 'const', 'private', 'else', 'elif', 'end', 'if', 'static', 'def', 'new');
-$booleans = array('yes', 'no', 'on', 'off', 'nil', 'none', 'true', 'false');
-$synonyms = array(
-    'on'   => 'true',
-    'yes'  => 'true',
-    'off'  => 'false',
-    'no'   => 'false',
-    'nil'  => 'null',
-    'none' => 'null',
-);
 
 function interlock($parts, $with) {
     $locks = array();
@@ -39,69 +16,6 @@ function interlock($parts, $with) {
     return $locks;
 }
 
-function identify_token($str) {
-    global $punctuation, $reserved_words, $booleans;
-
-    $trimmed = trim($str);
-
-    if (empty($str)) {
-        return null;
-    }
-
-    if ($trimmed == '###') {
-        return array($str, PPP_BLOCKQUOTES, 'PPP_BLOCKQUOTES');
-    }
-
-    if (in_array($trimmed, $booleans)) {
-        return array($str, PPP_BOOLEAN, 'PPP_BOOLEAN');
-    }
-
-    // Whitespace
-    if (empty($trimmed)) {
-        return array($str, PPP_WHITESPACE, 'PPP_WHITESPACE');
-    }
-
-    if (in_array($trimmed, $reserved_words)) {
-        return array($str, PPP_RESERVED, 'PPP_RESERVED');
-    }
-
-    // Variables
-    if (preg_match('/^\$[a-zA-Z][A-Za-z0-9_]*$/', $str)) {
-        return array($str, PPP_VARIABLE, 'PPP_VARIABLE');
-    }
-
-    // Barewords
-    if (preg_match('/^[a-zA-Z]/', $str)) {
-        return array($str, PPP_BAREWORD, 'PPP_BAREWORD');
-    }
-
-    // Static self
-    if (preg_match('/^@@\$?[a-zA-Z_]+$/', $str)) {
-        return array($str, PPP_STATIC_SELF, 'PPP_STATIC_SELF');
-    }
-
-    // Self 
-    if ($trimmed === '@') {
-        return array($str, PPP_SELF, 'PPP_SELF');
-    }
-
-    // Property
-    if (preg_match('/@[a-zA-Z_]+/', $str)) {
-        return array($str, PPP_PROPERTY, 'PPP_PROPERTY');
-    }
-
-    // String
-    if (preg_match('/^"[^(\")]*"$/', $str) || preg_match("/^'[^(\')]*'$/", $str)) {
-        return array($str, PPP_STRING, 'PPP_STRING');
-    }
-
-    // Punctuation
-    if (in_array($str, $punctuation)) {
-        return array($str, PPP_PUNCTUATION, 'PPP_PUNCTUATION');
-    }
-    return array($str, PPP_UNKNOWN, 'PPP_UNKNOWN');
-}
-
 function tokenizer($string) {
     $tokens = array();
     $string = trim($string);
@@ -110,7 +24,7 @@ function tokenizer($string) {
 
     $parts = preg_split('#(\"[^\"]*\")|(\'[^\']*\')|(\#\#\#)|(\<\<)|(\-\>)|(\s+|\.|:|\]|\[|,|\(|\))#', $string, null, PREG_SPLIT_DELIM_CAPTURE);
     foreach ($parts as $sub) {
-        $token = identify_token($sub);
+        $token = Token::generate($sub);
         if (!empty($token)) {
             $tokens[] = $token;
         }
@@ -165,38 +79,38 @@ foreach ($lines as $line) {
         $next_token_num = $cur_token;
         while ((++$next_token_num < $token_count) && empty($next_token)) {
             $possible_next_token = $tokens[$next_token_num];
-            if ($possible_next_token[1] !== PPP_WHITESPACE) {
+            if ($possible_next_token->type !== PPP_WHITESPACE) {
                 $next_token = $possible_next_token;
                 break;
             }
         }
         $cur_token++;
 
-        if ($token[1] === PPP_BLOCKQUOTES) {
+        if ($token->type === PPP_BLOCKQUOTES) {
             $in_block_quotes = !$in_block_quotes;
             $rewrites[] = ($in_block_quotes) ? '/*' : '*/';
             continue;
         }
 
         if ($in_block_quotes) {
-            $rewrites[] = $token[0];
+            $rewrites[] = $token->value;
             continue;
         }
 
 
-        switch ($token[1]) {
+        switch ($token->type) {
         case PPP_SELF:
             $rewrites[] = '$this';
             break;
         case PPP_PROPERTY:
         case PPP_BAREWORD:
 
-            if ($token[1] === PPP_PROPERTY) {
-                $rewrites[] = '$this->'.preg_replace('/^@/', '', $token[0]);
+            if ($token->type === PPP_PROPERTY) {
+                $rewrites[] = '$this->'.preg_replace('/^@/', '', $token->value);
             } else {
-                $rewrites[] = $token[0];
+                $rewrites[] = $token->value;
             }
-            if ($next_token && ($next_token[1] === PPP_STRING || $next_token[1] === PPP_STATIC_SELF || $next_token[1] === PPP_BOOLEAN || $next_token[1] === PPP_BAREWORD || $next_token[1] === PPP_VARIABLE || $next_token[1] === PPP_SELF || $next_token[1] === PPP_PROPERTY)) {
+            if ($next_token && ($next_token->type === PPP_STRING || $next_token->type === PPP_STATIC_SELF || $next_token->type === PPP_BOOLEAN || $next_token->type === PPP_BAREWORD || $next_token->type === PPP_VARIABLE || $next_token->type === PPP_SELF || $next_token->type === PPP_PROPERTY)) {
                 $rewrites[] = '(';
                 $open_stack[] = ')';
             }
@@ -207,22 +121,22 @@ foreach ($lines as $line) {
             if (substr($last_word, -1) == '(') {
                 continue;
             }
-            $rewrites[] = $token[0];
+            $rewrites[] = $token->value;
             break;
 
         case PPP_BOOLEAN:
-            if (in_array($token[0], $synonym_list)) {
-                $rewrites[] = $synonyms[$token[0]];
+            if (in_array($token->value, $synonym_list)) {
+                $rewrites[] = $synonyms[$token->value];
             } else {
-                $rewrites[] = $token[0];
+                $rewrites[] = $token->value;
             }
             break;
 
         case PPP_RESERVED:
-            if (in_array($token[0], $synonym_list)) {
-                $rewrites[] = $synonyms[$token[0]];
+            if (in_array($token->value, $synonym_list)) {
+                $rewrites[] = $synonyms[$token->value];
             } else {
-                switch ($token[0]) {
+                switch ($token->value) {
                 case '(':
                     $open_stack[] = ')';
                     $rewrites[] = '(';
@@ -270,17 +184,17 @@ foreach ($lines as $line) {
                 case 'class':
                     $ends_curly = true;
                 default:
-                    $rewrites[] = $token[0];
+                    $rewrites[] = $token->value;
                 }
             }
             break;
 
         case PPP_STATIC_SELF:
-            $rewrites[] = str_replace('@@', 'self::', $token[0]);
+            $rewrites[] = str_replace('@@', 'self::', $token->value);
             break;
 
         case PPP_PUNCTUATION:
-            switch ($token[0]) {
+            switch ($token->value) {
             case ':':
                 $top = array_pop($bracket_stack);
                 if ($top == PPP_BRACKET_ARRAY) {
@@ -291,7 +205,7 @@ foreach ($lines as $line) {
                 $bracket_stack[] = $top;
                 break;
             case '[':
-                if ($prev_token[1] === PPP_VARIABLE) {
+                if ($prev_token->is(PPP_VARIABLE)) {
                     $bracket_stack[] = PPP_BRACKET_PROP;
                     $rewrites[] = '[';
                 } else {
@@ -310,21 +224,21 @@ foreach ($lines as $line) {
                 break;
 
             case '.':
-                if ($next_token[1] === PPP_BAREWORD) {
+                if ($next_token->is(PPP_BAREWORD)) {
                     $rewrites[] = '->';
                 } else {
-                    $rewrites[] = $token[0];
+                    $rewrites[] = $token->value;
                 }
                 break;
             case '<<':
                 $rewrites[] = 'return';
                 break;
             default:
-                $rewrites[] = $token[0];
+                $rewrites[] = $token->value;
             }
             break;
         default:
-            $rewrites[] = $token[0];
+            $rewrites[] = $token->value;
         }
 
         if (is_null($next_token)) {

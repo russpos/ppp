@@ -29,6 +29,7 @@ $samples = opendir($sample_dir = dirname(__FILE__).'/samples');
 $output  = opendir($output_dir = dirname(__FILE__).'/output');
 
 $failures = 0;
+$lines = 0;
 
 while ($path = readdir($samples)) {
     if ($path[0] == '.') {
@@ -44,6 +45,7 @@ while ($path = readdir($samples)) {
     $parsed_lines = explode("\n", $parsed);
     $line = 0;
     foreach ($parsed_lines as $p_line) {
+        $lines++;
         $line++;
         $o_line = array_shift($output_lines);
         if (trim($p_line) != trim($o_line)) {
@@ -59,8 +61,8 @@ while ($path = readdir($samples)) {
     }
 }
 
+echo "... Parsed $lines lines!\n";
 if (!$failures) {
-    echo "... ";
     echocolor("All tests pass!\n", 'green');
     exit(0);
 }
