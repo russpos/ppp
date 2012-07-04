@@ -1,4 +1,5 @@
 <?php
+// Tokens
 define('PPP_BAREWORD',    200);
 define('PPP_VARIABLE',    201);
 define('PPP_PUNCTUATION', 202);
@@ -12,7 +13,11 @@ define('PPP_RESERVED',    209);
 define('PPP_BLOCKQUOTES', 210);
 define('PPP_BOOLEAN',     211);
 
-$punctuation = array(':', '(', ',', ')', '.', '=', '->', '+', '<<', '-');
+// States
+define('PPP_BRACKET_ARRAY', 301);
+define('PPP_BRACKET_PROP',  302);
+
+$punctuation = array(':', '(', ',', ')', '.', '=', '->', '[', ']', '+', '<<', '-');
 $reserved_words = array('public', 'class', 'extends', 'private', 'else', 'elif', 'end', 'if', 'static', 'def', 'new');
 $booleans = array('yes', 'no', 'on', 'off', 'nil', 'none', 'true', 'false');
 $synonyms = array(
@@ -97,7 +102,7 @@ function tokenizer($string) {
 
 
 
-    $parts = preg_split('#(\"[^\"]*\")|(\'[^\']*\')|(\#\#\#)|(\<\<)|(\-\>)|(\s+|\.|:|,|\(|\))#', $string, null, PREG_SPLIT_DELIM_CAPTURE);
+    $parts = preg_split('#(\"[^\"]*\")|(\'[^\']*\')|(\#\#\#)|(\<\<)|(\-\>)|(\s+|\.|:|\]|\[|,|\(|\))#', $string, null, PREG_SPLIT_DELIM_CAPTURE);
     foreach ($parts as $sub) {
         $token = identify_token($sub);
         if (!empty($token)) {
@@ -126,6 +131,8 @@ $output = array("<?php");
 
 $indents = 0;
 $in_block_quotes = false;
+
+$bracket_stack = array();
 
 foreach ($lines as $line) {
     global $synonyms;
@@ -264,6 +271,34 @@ foreach ($lines as $line) {
 
         case PPP_PUNCTUATION:
             switch ($token[0]) {
+            case ':':
+                $top = array_pop($bracket_stack);
+                if ($top == PPP_BRACKET_ARRAY) {
+                    $rewrites[] = '=>';
+                } else {
+                    $rewrites[] = ':';
+                }
+                $bracket_stack[] = $top;
+                break;
+            case '[':
+                if ($prev_token[1] === PPP_VARIABLE) {
+                    $bracket_stack[] = PPP_BRACKET_PROP;
+                    $rewrites[] = '[';
+                } else {
+                    $bracket_stack[] = PPP_BRACKET_ARRAY;
+                    $rewrites[] = 'array(';
+                }
+                break;
+
+            case ']':
+                $popped = array_pop($bracket_stack);
+                if ($popped == PPP_BRACKET_ARRAY) {
+                    $rewrites[] = ')';
+                } else {
+                    $rewrites[] = ']';
+                }
+                break;
+
             case '.':
                 if ($next_token[1] === PPP_BAREWORD) {
                     $rewrites[] = '->';
