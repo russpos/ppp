@@ -26,6 +26,17 @@ class Foo extends Bar {
         return $x < $y ? true : false;
     }
 
+    function someMethodThatThrows() {
+        try {
+            $this->funcWithArg(42);
+            } catch (ORM_Exception $e) {
+            Logger::log($e->getMessage());
+            throw $e;
+            } catch (UnexecptedArgumentException $e) {
+            return 42;
+            }
+    }
+
     function funcWithArg($x = 23) {
         $do = ($foo > 'barf') ? true : false;
 

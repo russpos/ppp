@@ -22,7 +22,18 @@ class Foo extends Bar
     $arrays = ['name' : 'russ', 'phone_number' : '1800flowers']
     $arrays[$foo] = 'bar'
     $var.supports $dotNotation, 'for functions!'
-    << $x < $y ? yes : no
+    <- $x < $y ? yes : no
+  end
+
+  def someMethodThatThrows()
+    try
+      @funcWithArg 42
+    catch ORM_Exception $e
+      Logger::log $e.getMessage()
+      throw $e
+    catch UnexecptedArgumentException $e
+        <- 42
+    end
   end
 
   def funcWithArg($x = 23)
@@ -32,11 +43,11 @@ class Foo extends Bar
     $barf.turnMachine off
 
     if @variable 'return value', $x
-        << 24
+        <- 24
     elif 23 + 34 > 12
-        << 12
+        <- 12
     else
-        << 6
+        <- 6
     end
   end
 

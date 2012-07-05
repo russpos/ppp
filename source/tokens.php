@@ -14,6 +14,7 @@ define('PPP_RESERVED',    209);
 define('PPP_BLOCKQUOTES', 210);
 define('PPP_BOOLEAN',     211);
 define('PPP_STATIC_SELF', 212);
+define('PPP_NUMBER',      213);
 
 
 define('IS_REGEX', 4500);
@@ -35,11 +36,13 @@ class Token {
         PPP_RESERVED    => 'Token_Reserved',
         PPP_BLOCKQUOTES => 'Token_Blockquotes',
         PPP_BOOLEAN     => 'Token_Boolean',
+        PPP_NUMBER      => 'Token_Number',
         PPP_STATIC_SELF => 'Token_StaticSelf',
     );
 
     private static $definitions = array(
-        IS_REGEX => array('/^\$[a-zA-Z][A-Za-z0-9_]*$/' => PPP_VARIABLE)
+        IS_REGEX => array('/^\$[a-zA-Z][A-Za-z0-9_]*$/' => PPP_VARIABLE,
+                          '/^[0-9]+$/'                  => PPP_NUMBER)
     );
 
     public function __construct($str, $type=null) {
@@ -210,5 +213,11 @@ class Token_StaticSelf extends Token {
 class Token_String extends Token {
     protected function defaultType() {
         return PPP_STRING;
+    }
+}
+
+class Token_Number extends Token {
+    protected function defaultType() {
+        return PPP_NUMBER;
     }
 }

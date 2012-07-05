@@ -22,7 +22,7 @@ function tokenizer($string) {
 
 
 
-    $parts = preg_split('#(\"[^\"]*\")|(\'[^\']*\')|(\#\#\#)|(\<\<)|(\-\>)|(\s+|\.|:|\]|\[|,|\(|\))#', $string, null, PREG_SPLIT_DELIM_CAPTURE);
+    $parts = preg_split('#(\"[^\"]*\")|(\'[^\']*\')|(\#\#\#)|(\<\-)|(\-\>)|(\s+|\.|:|\]|\[|,|\(|\))#', $string, null, PREG_SPLIT_DELIM_CAPTURE);
     foreach ($parts as $sub) {
         $token = Token::generate($sub);
         if (!empty($token)) {
@@ -65,6 +65,7 @@ foreach ($lines as $line) {
     $rewrites[] = tabs($indents);
 
     $ends_curly = false;
+    $in_catch = false;
 
     while ($cur_token < $token_count) {
         $prev_token = null;
@@ -85,6 +86,8 @@ foreach ($lines as $line) {
             }
         }
         $cur_token++;
+
+        //echo "Type: ({$token->value}): ".get_class($token)."\n";
 
         if ($token->type === PPP_BLOCKQUOTES) {
             $in_block_quotes = !$in_block_quotes;
@@ -110,7 +113,7 @@ foreach ($lines as $line) {
             } else {
                 $rewrites[] = $token->value;
             }
-            if ($next_token && ($next_token->type === PPP_STRING || $next_token->type === PPP_STATIC_SELF || $next_token->type === PPP_BOOLEAN || $next_token->type === PPP_BAREWORD || $next_token->type === PPP_VARIABLE || $next_token->type === PPP_SELF || $next_token->type === PPP_PROPERTY)) {
+            if (!$in_catch && $next_token && ($next_token->type === PPP_STRING || $next_token->type === PPP_NUMBER || $next_token->type === PPP_STATIC_SELF || $next_token->type === PPP_BOOLEAN || $next_token->type === PPP_BAREWORD || $next_token->type === PPP_VARIABLE || $next_token->type === PPP_SELF || $next_token->type === PPP_PROPERTY)) {
                 $rewrites[] = '(';
                 $open_stack[] = ')';
             }
@@ -172,6 +175,18 @@ foreach ($lines as $line) {
                     $ends_curly = true;
                     break;
 
+                case 'try':
+                    $rewrites[] = 'try';
+                    $ends_curly = true;
+                    break;
+
+                case 'catch':
+                    $rewrites[] = '} catch (';
+                    $open_stack[] = ')';
+                    $in_catch = true;
+                    $ends_curly = true;
+                    break;
+
                 case 'elif':
                     array_pop($rewrites);
                     $indents--;
@@ -230,7 +245,7 @@ foreach ($lines as $line) {
                     $rewrites[] = $token->value;
                 }
                 break;
-            case '<<':
+            case '<-':
                 $rewrites[] = 'return';
                 break;
             default:
