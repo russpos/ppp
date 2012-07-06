@@ -11,5 +11,6 @@ $synonyms = array(
     'nil'  => 'null',
     'none' => 'null',
 );
+$synonym_list = array_keys($synonyms);
 
 

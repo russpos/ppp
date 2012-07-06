@@ -54,6 +54,10 @@ class Token {
         }
     }
 
+    public function parse($parser) {
+        $parser->rewrites[] = $this->value;
+    }
+
     public function is($type) {
         return $this->type === $type;
     }
@@ -154,6 +158,14 @@ class Token_Whitespace extends Token {
     protected function defaultType() {
         return PPP_WHITESPACE;
     }
+
+    public function parse($parser) {
+        $last_word = $parser->rewrites[count($parser->rewrites)-1];
+        if (substr($last_word, -1) == '(') {
+            throw new ParserException_TokenContinue();
+        }
+        $parser->rewrites[] = $this->value;
+    }
 }
 
 class Token_Variable extends Token {
@@ -202,11 +214,24 @@ class Token_Boolean extends Token {
     protected function defaultType() {
         return PPP_BOOLEAN;
     }
+
+    public function parse($parser) {
+        global $synonym_list, $synonyms;
+        if (in_array($this->value, $synonym_list)) {
+            $parser->rewrites[] = $synonyms[$this->value];
+        } else {
+            $parser->rewrites[] = $this->value;
+        }
+    }
 }
 
 class Token_StaticSelf extends Token {
     protected function defaultType() {
         return PPP_STATIC_SELF;
+    }
+
+    public function parse($parser) {
+        $parser->rewrites[] = str_replace('@@', 'self::', $this->value);
     }
 }
 
