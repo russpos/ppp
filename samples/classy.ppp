@@ -7,15 +7,11 @@ class Foo
   def __construct($foo, $bar)
     @foo = $foo
     @say $foo, true
-  end
 
   private def say($msg, $silly)
     if $silly
       echo $msg
     else 
       echo ">>>>$msg<<<<"
-    end
-  end
-end
 
 $c = new Foo "hello", 123

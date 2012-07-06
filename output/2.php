@@ -40,8 +40,8 @@ class Foo extends Bar {
 
     function __construct() {
         $this->name = 'russ';
-    }
 
+    }
     private function doSomething() {
         $this->has($this->nested("function calls!", 12.4));
         $var = 'single quoted string';
@@ -56,19 +56,21 @@ class Foo extends Bar {
         $arrays[$foo] = 'bar';
         $var->supports($dotNotation, 'for functions!');
         return $x < $y ? true : false;
-    }
 
+    }
     function someMethodThatThrows() {
         try {
             $this->funcWithArg(42);
-            } catch (ORM_Exception $e) {
+        }
+        catch (ORM_Exception $e) {
             Logger::log($e->getMessage());
             throw $e;
-            } catch (UnexecptedArgumentException $e) {
+        }
+        catch (UnexecptedArgumentException $e) {
             return 42;
-            }
-    }
 
+        }
+    }
     function funcWithArg($x = 23) {
         $do = ($foo > 'barf') ? true : false;
 
@@ -77,11 +79,14 @@ class Foo extends Bar {
 
         if ($this->variable('return value', $x)) {
             return 24;
-        } else if (23 + 34 > 12) {
+        }
+        else if (23 + 34 > 12) {
             return 12;
-        } else {
+        }
+        else {
             return 6;
+
+
         }
     }
-
 }

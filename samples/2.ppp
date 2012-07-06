@@ -39,7 +39,6 @@ class Foo extends Bar
 
   def __construct()
     @name = 'russ'
-  end
 
   private def doSomething()
     @has @nested "function calls!", 12.4
@@ -55,7 +54,6 @@ class Foo extends Bar
     $arrays[$foo] = 'bar'
     $var.supports $dotNotation, 'for functions!'
     <- $x < $y ? yes : no
-  end
 
   def someMethodThatThrows()
     try
@@ -65,8 +63,6 @@ class Foo extends Bar
       throw $e
     catch UnexecptedArgumentException $e
         <- 42
-    end
-  end
 
   def funcWithArg($x = 23)
     $do = ($foo > 'barf') ? true : false
@@ -80,7 +76,4 @@ class Foo extends Bar
         <- 12
     else
         <- 6
-    end
-  end
 
-end

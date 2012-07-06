@@ -8,15 +8,16 @@ class Foo {
     function __construct($foo, $bar) {
         $this->foo = $foo;
         $this->say($foo, true);
-    }
 
+    }
     private function say($msg, $silly) {
         if ($silly) {
             echo($msg);
-        } else {
+        }
+        else {
             echo(">>>>$msg<<<<");
+
         }
     }
 }
-
 $c = new Foo("hello", 123);
