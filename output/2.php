@@ -6,6 +6,38 @@ class Foo extends Bar {
 
     static $static_property = 5;
 
+    static $multi_line_array = array(
+        'foo',
+        'bar',
+        'baz',
+        'barf',
+        );
+
+    static $multi_2d_array = array(
+        'foo' => array(
+            'bar'=> 'baz'
+            )
+        );
+
+    static $crazy_json_obj = array(
+        "foo" => array("bar" => "baz" ),
+        "barf" => array(
+            "magic" => array(1, 2, 3)
+            )
+        );
+
+    static $three_deep = array(
+        "foo" => array(
+            "bar"=> array(
+                'hello'
+                )
+            )
+        );
+
+    static $one_d_json_object = array(
+        "foo" => 124
+        );
+
     function __construct() {
         $this->name = 'russ';
     }

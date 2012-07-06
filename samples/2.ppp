@@ -5,6 +5,38 @@ class Foo extends Bar
 
   static $static_property = 5
 
+  static $multi_line_array = [
+      'foo',
+      'bar',
+      'baz',
+      'barf',
+    ]
+
+  static $multi_2d_array = {
+    'foo' : {
+        'bar': 'baz'
+    }
+  }
+
+  static $crazy_json_obj = {
+    "foo" : { "bar" : "baz" },
+    "barf" : { 
+      "magic" : [1, 2, 3]
+    }
+  }
+
+  static $three_deep = {
+    "foo" : {
+       "bar": {
+         'hello'
+       }
+    }
+  }
+
+  static $one_d_json_object = {
+    "foo" : 124
+  }
+
   def __construct()
     @name = 'russ'
   end

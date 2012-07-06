@@ -41,10 +41,11 @@ function tabs($number=0) {
 
 class PPP_Parser {
 
-public function parse($content) {
+    public function parse($content) {
+        global $synonyms;
 
+// Fix over zealous new-line removal
 
-$content = preg_replace("/\s*\|\n\s*/", ' ', $content);
 $lines = explode("\n", $content);
 
 $output = array("<?php");
@@ -53,25 +54,49 @@ $indents = 0;
 $in_block_quotes = false;
 
 $bracket_stack = array();
+$reset = true;
+$synonym_list = array_keys($synonyms);
+
+$array_stack = 0;
+$rewrites = array();
+$cur_token = 0;
+$token_count;
+$open_stack = array();
+
+$ends_curly = false;
+$in_catch = false;
 
 foreach ($lines as $line) {
-    global $synonyms;
-    $synonym_list = array_keys($synonyms);
+    
     $tokens = tokenizer($line);
-    $rewrites = array();
-    $cur_token = 0;
-    $token_count = count($tokens);
-    $open_stack = array();
-    $rewrites[] = tabs($indents);
+    if ($reset) {
+        $array_stack = 0;
+        $rewrites = array();
+        $open_stack = array();
+        $ends_curly = false;
+        $in_catch = false;
+    }
 
-    $ends_curly = false;
-    $in_catch = false;
+    $token_count = count($tokens);
+    $cur_token = 0;
+
+    $reset = true;
 
     while ($cur_token < $token_count) {
         $prev_token = null;
         $next_token = null;
         $end = false;
         $token = $tokens[$cur_token];
+
+        if ($cur_token == 0) {
+            if ($token->value == ']' || $token->value == '}') {
+                $tab_variation = -1;
+            } else {
+                $tab_variation = 0;
+            }
+            $rewrites[] = tabs($indents+$array_stack+$tab_variation);
+        }
+
         if ($cur_token-1 >= 0) {
             $prev_token = $tokens[$cur_token-1];
         }
@@ -181,6 +206,9 @@ foreach ($lines as $line) {
                     break;
 
                 case 'catch':
+                    array_pop($rewrites);
+                    $indents--;
+                    $rewrites[] = tabs($indents);
                     $rewrites[] = '} catch (';
                     $open_stack[] = ')';
                     $in_catch = true;
@@ -211,13 +239,15 @@ foreach ($lines as $line) {
         case PPP_PUNCTUATION:
             switch ($token->value) {
             case ':':
-                $top = array_pop($bracket_stack);
-                if ($top == PPP_BRACKET_ARRAY) {
+                if ($array_stack) {
                     $rewrites[] = '=>';
                 } else {
                     $rewrites[] = ':';
                 }
-                $bracket_stack[] = $top;
+                break;
+            case '{':
+                $rewrites[] = 'array(';
+                $array_stack++;
                 break;
             case '[':
                 if ($prev_token->is(PPP_VARIABLE)) {
@@ -226,13 +256,18 @@ foreach ($lines as $line) {
                 } else {
                     $bracket_stack[] = PPP_BRACKET_ARRAY;
                     $rewrites[] = 'array(';
+                    $array_stack++;
                 }
                 break;
-
+            case '}':
+                $rewrites[] = ')';
+                $array_stack--;
+                break;
             case ']':
                 $popped = array_pop($bracket_stack);
                 if ($popped == PPP_BRACKET_ARRAY) {
                     $rewrites[] = ')';
+                    $array_stack--;
                 } else {
                     $rewrites[] = ']';
                 }
@@ -257,6 +292,10 @@ foreach ($lines as $line) {
         }
 
         if (is_null($next_token)) {
+            if ($token->value == ',' || !empty($array_stack)) {
+                $reset = false;
+                continue;
+            }
             while (!empty($open_stack)) {
                 $rewrites[] = array_pop($open_stack);
             }
@@ -269,9 +308,14 @@ foreach ($lines as $line) {
             }
         }
     }
-    $output[] = implode('', $rewrites);
+    if ($reset) {
+        $output[] = implode('', $rewrites);
+    } else {
+        $rewrites[] = "\n";
+    }
 
 }
-return implode("\n", $output);
+$printer =  implode("\n", $output);
+return $printer;
 }
 }
