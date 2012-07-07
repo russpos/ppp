@@ -83,28 +83,28 @@ class PPP_Parser {
         }
         $space = implode('', array_fill(0, $number*4, ' '));
         if ($write) {
-            $this->rewrites[] = $space;
+            $this->token_list[] = $space;
         }
         return $space;
     }
 
     protected function reset_state() {
         $this->array_stack = 0;
-        $this->rewrites = array();
+        $this->token_list = array();
         $this->open_stack = array();
         $this->bracket_stack = array();
         $this->ends_curly = false;
         $this->is_in_catch = false;
     }
 
-    protected function PPP_BLOCKQUOTES() {
+    protected function blockQuotes() {
         if ($this->token->is(PPP_BLOCKQUOTES)) {
             $this->in_block_quotes = !$this->in_block_quotes;
-            $this->rewrites[] = ($this->in_block_quotes) ? '/*' : '*/';
+            $this->token_list[] = ($this->in_block_quotes) ? '/*' : '*/';
             throw new ParserException_TokenContinue();
         }
         if ($this->in_block_quotes) {
-            $this->rewrites[] = $this->token->value;
+            $this->token_list[] = $this->token->value;
             throw new ParserException_TokenContinue();
         }
     }
@@ -178,173 +178,42 @@ class PPP_Parser {
 
             while ($this->cur_token < $this->token_count) {
                 try {
-                $prev_token = null;
-                $next_token = null;
-                $end = false;
-                $this->token = $token = $this->tokens[$this->cur_token];
+                    $this->prev_token = null;
+                    $this->next_token = null;
+                    $end = false;
+                    $this->token = $token = $this->tokens[$this->cur_token];
 
-                if ($this->cur_token == 0) {
-                    if ($token->value == ']' || $token->value == '}') {
-                        $tab_variation = -1;
-                    } else {
-                        $tab_variation = 0;
-                    }
-                    $this->tabs($tab_variation);
-                }
-
-                if ($this->cur_token-1 >= 0) {
-                    $prev_token = $this->tokens[$this->cur_token-1];
-                }
-
-                $next_token = $this->next_token();
-
-                $this->cur_token++;
-
-                //echo "Type: ({$token->value}): ".get_class($token)."\n";
-                $this->PPP_BLOCKQUOTES();
-
-                switch ($token->type) {
-                case PPP_SELF:
-                    $this->rewrites[] = '$this';
-                    break;
-                case PPP_PROPERTY:
-                case PPP_BAREWORD:
-
-                    if ($token->type === PPP_PROPERTY) {
-                        $this->rewrites[] = '$this->'.preg_replace('/^@/', '', $token->value);
-                    } else {
-                        $this->rewrites[] = $token->value;
-                    }
-                    if (!$this->is_in_catch && $next_token && ($next_token->type === PPP_STRING || $next_token->type === PPP_NUMBER || $next_token->type === PPP_STATIC_SELF || $next_token->type === PPP_BOOLEAN || $next_token->type === PPP_BAREWORD || $next_token->type === PPP_VARIABLE || $next_token->type === PPP_SELF || $next_token->type === PPP_PROPERTY)) {
-                        $this->rewrites[] = '(';
-                        $this->open_stack[] = ')';
-                    }
-                    break;
-
-                case PPP_RESERVED:
-                    if (in_array($token->value, $synonym_list)) {
-                        $this->rewrites[] = $synonyms[$token->value];
-                    } else {
-                        switch ($token->value) {
-                        case '(':
-                            $this->open_stack[] = ')';
-                            $this->rewrites[] = '(';
-                            break;
-                        case ')':
-                            array_pop($this->open_stack);
-                            $this->rewrites[] = ')';
-                            break;
-
-                        case 'if':
-                            $this->rewrites[] = 'if (';
-                            $this->open_stack[] = ')';
-                            $this->ends_curly = true;
-                            break;
-                        case 'def':
-                            $this->rewrites[] = 'function';
-                            $this->ends_curly = true;
-                            break;
-
-                        case 'else':
-                            $this->rewrites[] = 'else';
-                            $this->ends_curly = true;
-                            break;
-
-                        case 'try':
-                            $this->rewrites[] = 'try';
-                            $this->ends_curly = true;
-                            break;
-
-                        case 'catch':
-                            $this->rewrites[] = 'catch (';
-                            $this->open_stack[] = ')';
-                            $this->is_in_catch = true;
-                            $this->ends_curly = true;
-                            break;
-
-                        case 'elif':
-                            $this->rewrites[] = 'else if (';
-                            $this->open_stack[] = ')';
-                            $this->ends_curly = true;
-                            break;
-
-                        case 'class':
-                            $this->ends_curly = true;
-                        default:
-                            $this->rewrites[] = $token->value;
-                        }
-                    }
-                    break;
-
-                case PPP_PUNCTUATION:
-                    switch ($token->value) {
-                    case ':':
-                        if ($this->array_stack) {
-                            $this->rewrites[] = '=>';
+                    if ($this->cur_token == 0) {
+                        if ($token->value == ']' || $token->value == '}') {
+                            $tab_variation = -1;
                         } else {
-                            $this->rewrites[] = ':';
+                            $tab_variation = 0;
                         }
-                        break;
-                    case '{':
-                        $this->rewrites[] = 'array(';
-                        $this->array_stack++;
-                        break;
-                    case '[':
-                        if ($prev_token->is(PPP_VARIABLE)) {
-                            $this->bracket_stack[] = PPP_BRACKET_PROP;
-                            $this->rewrites[] = '[';
-                        } else {
-                            $this->bracket_stack[] = PPP_BRACKET_ARRAY;
-                            $this->rewrites[] = 'array(';
-                            $this->array_stack++;
-                        }
-                        break;
-                    case '}':
-                        $this->rewrites[] = ')';
-                        $this->array_stack--;
-                        break;
-                    case ']':
-                        $popped = array_pop($this->bracket_stack);
-                        if ($popped == PPP_BRACKET_ARRAY) {
-                            $this->rewrites[] = ')';
-                            $this->array_stack--;
-                            } else {
-                                $this->rewrites[] = ']';
-                            }
-                            break;
-
-                        case '.':
-                            if ($next_token->is(PPP_BAREWORD)) {
-                                $this->rewrites[] = '->';
-                            } else {
-                                $this->rewrites[] = $token->value;
-                            }
-                            break;
-                        case '<-':
-                            $this->rewrites[] = 'return';
-                            break;
-                        default:
-                            $this->rewrites[] = $token->value;
-                        }
-                        break;
-                    default:
-                        $token->parse($this);
-                        
+                        $this->tabs($tab_variation);
                     }
 
-                    if (is_null($next_token)) {
+                    if ($this->cur_token-1 >= 0) {
+                        $this->prev_token = $this->tokens[$this->cur_token-1];
+                    }
+
+                    $this->next_token = $next_token = $this->next_token();
+                    $this->cur_token++;
+                    $this->blockQuotes();
+                    $token->parse($this);
+
+                    if (is_null($this->next_token)) {
                         if ($token->value == ',' || !empty($this->array_stack)) {
                             $this->reset = false;
                             continue;
                         }
                         while (!empty($this->open_stack)) {
-                            $this->rewrites[] = array_pop($this->open_stack);
+                            $this->token_list[] = array_pop($this->open_stack);
                         }
 
                         if ($this->ends_curly) {
-                            $this->rewrites[] = ' {';
+                            $this->token_list[] = ' {';
                         } else if (!$end) {
-                            $this->rewrites[] = ';';
+                            $this->token_list[] = ';';
                         }
                     }
                 } catch (ParserException_TokenBreak $e) {
@@ -354,10 +223,10 @@ class PPP_Parser {
                 }
             }
             if ($this->reset) {
-                $processed = implode('', $this->rewrites);
+                $processed = implode('', $this->token_list);
                 $this->output[] = $processed;
             } else {
-                $this->rewrites[] = "\n";
+                $this->token_list[] = "\n";
             }
 
         }

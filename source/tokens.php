@@ -55,7 +55,7 @@ class Token {
     }
 
     public function parse($parser) {
-        $parser->rewrites[] = $this->value;
+        $parser->token_list[] = $this->value;
     }
 
     public function is($type) {
@@ -71,6 +71,13 @@ class Token {
         case IS_REGEX:   return preg_match($test, $matcher); break;
         case IS_MATCH:   return ($test == $matcher);         break;
         case IS_IN_LIST: return (in_array($matcher, $test)); break;
+        }
+    }
+
+    protected function functionCall($parser) {
+        if (!$parser->is_in_catch && $parser->next_token && ($parser->next_token->type === PPP_STRING || $parser->next_token->type === PPP_NUMBER || $parser->next_token->type === PPP_STATIC_SELF || $parser->next_token->type === PPP_BOOLEAN || $parser->next_token->type === PPP_BAREWORD || $parser->next_token->type === PPP_VARIABLE || $parser->next_token->type === PPP_SELF || $parser->next_token->type === PPP_PROPERTY)) {
+            $parser->token_list[] = '(';
+            $parser->open_stack[] = ')';
         }
     }
 
@@ -149,9 +156,16 @@ class Token_Blockquotes extends Token {
 }
 
 class Token_Bareword extends Token {
+
     protected function defaultType() {
         return PPP_BAREWORD;
     }
+
+    public function parse($parser) {
+        $parser->token_list[] = $this->value;
+        $this->functionCall($parser);
+    }
+
 }
 
 class Token_Whitespace extends Token {
@@ -160,11 +174,11 @@ class Token_Whitespace extends Token {
     }
 
     public function parse($parser) {
-        $last_word = $parser->rewrites[count($parser->rewrites)-1];
+        $last_word = $parser->token_list[count($parser->token_list)-1];
         if (substr($last_word, -1) == '(') {
             throw new ParserException_TokenContinue();
         }
-        $parser->rewrites[] = $this->value;
+        $parser->token_list[] = $this->value;
     }
 }
 
@@ -178,11 +192,67 @@ class Token_Punctuation extends Token {
     protected function defaultType() {
         return PPP_PUNCTUATION;
     }
+
+    public function parse($parser) {
+        switch ($this->value) {
+        case ':':
+            if ($parser->array_stack) {
+                $parser->token_list[] = '=>';
+            } else {
+                $parser->token_list[] = ':';
+            }
+            break;
+        case '{':
+            $parser->token_list[] = 'array(';
+            $parser->array_stack++;
+            break;
+        case '[':
+            if ($parser->prev_token && $parser->prev_token->is(PPP_VARIABLE)) {
+                $parser->bracket_stack[] = PPP_BRACKET_PROP;
+                $parser->token_list[] = '[';
+            } else {
+                $parser->bracket_stack[] = PPP_BRACKET_ARRAY;
+                $parser->token_list[] = 'array(';
+                $parser->array_stack++;
+            }
+            break;
+        case '}':
+            $parser->token_list[] = ')';
+            $parser->array_stack--;
+            break;
+        case ']':
+            $popped = array_pop($parser->bracket_stack);
+            if ($popped == PPP_BRACKET_ARRAY) {
+                $parser->token_list[] = ')';
+                $parser->array_stack--;
+            } else {
+                $parser->token_list[] = ']';
+            }
+            break;
+
+        case '.':
+            if ($parser->next_token->is(PPP_BAREWORD)) {
+                $parser->token_list[] = '->';
+            } else {
+                $parser->token_list[] = $this->value;
+            }
+            break;
+        case '<-':
+            $parser->token_list[] = 'return';
+            break;
+        default:
+            parent::parse($parser);
+        }
+    }
 }
 
 class Token_Self extends Token {
     protected function defaultType() {
         return PPP_SELF;
+    }
+
+    public function parse($parser) {
+        $parser->token_list[] = '$this';
     }
 }
 
@@ -196,6 +266,11 @@ class Token_Property extends Token {
     protected function defaultType() {
         return PPP_PROPERTY;
     }
+
+    public function parse($parser) {
+        $parser->token_list[] = '$this->'.preg_replace('/^@/', '', $this->value);
+        $this->functionCall($parser);
+    }
 }
 
 class Token_Unknown extends Token {
@@ -208,6 +283,62 @@ class Token_Reserved extends Token {
     protected function defaultType() {
         return PPP_RESERVED;
     }
+
+    public function parse($parser) {
+        global $synonym_list, $synonyms;
+        if (in_array($this->value, $synonym_list)) {
+            $parser->token_list[] = $synonyms[$this->value];
+        } else {
+            switch ($this->value) {
+            case '(':
+                $parser->open_stack[] = ')';
+                $parser->token_list[] = '(';
+                break;
+            case ')':
+                array_pop($parser->open_stack);
+                $parser->token_list[] = ')';
+                break;
+
+            case 'if':
+                $parser->token_list[] = 'if (';
+                $parser->open_stack[] = ')';
+                $parser->ends_curly = true;
+                break;
+            case 'def':
+                $parser->token_list[] = 'function';
+                $parser->ends_curly = true;
+                break;
+
+            case 'else':
+                $parser->token_list[] = 'else';
+                $parser->ends_curly = true;
+                break;
+
+            case 'try':
+                $parser->token_list[] = 'try';
+                $parser->ends_curly = true;
+                break;
+
+            case 'catch':
+                $parser->token_list[] = 'catch (';
+                $parser->open_stack[] = ')';
+                $parser->is_in_catch = true;
+                $parser->ends_curly = true;
+                break;
+
+            case 'elif':
+                $parser->token_list[] = 'else if (';
+                $parser->open_stack[] = ')';
+                $parser->ends_curly = true;
+                break;
+
+            case 'class':
+                $parser->ends_curly = true;
+            default:
+                parent::parse($parser);
+            }
+        }
+    }
 }
 
 class Token_Boolean extends Token {
@@ -218,9 +349,9 @@ class Token_Boolean extends Token {
     public function parse($parser) {
         global $synonym_list, $synonyms;
         if (in_array($this->value, $synonym_list)) {
-            $parser->rewrites[] = $synonyms[$this->value];
+            $parser->token_list[] = $synonyms[$this->value];
         } else {
-            $parser->rewrites[] = $this->value;
+            $parser->token_list[] = $this->value;
         }
     }
 }
@@ -231,7 +362,7 @@ class Token_StaticSelf extends Token {
     }
 
     public function parse($parser) {
-        $parser->rewrites[] = str_replace('@@', 'self::', $this->value);
+        $parser->token_list[] = str_replace('@@', 'self::', $this->value);
     }
 }
 

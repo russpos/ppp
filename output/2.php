@@ -50,6 +50,8 @@ class Foo extends Bar {
         $name = func(self::SOME_CONST);
         $name = func(self::$static_property);
 
+        $do->somethingWith($this);
+
         $array_style_one = array('list', 'of', 4, $things);
         $nested_arrays = array('stuff', $with, array('stuff'=> $between));
         $arrays = array('name' => 'russ', 'phone_number' => '1800flowers');

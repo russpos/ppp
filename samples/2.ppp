@@ -48,6 +48,8 @@ class Foo extends Bar
     $name = func @@SOME_CONST
     $name = func @@$static_property
 
+    $do->somethingWith @
+
     $array_style_one = ['list', 'of', 4, $things]
     $nested_arrays = ['stuff', $with, ['stuff': $between]]
     $arrays = ['name' : 'russ', 'phone_number' : '1800flowers']
