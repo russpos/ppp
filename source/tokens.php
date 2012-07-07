@@ -2,7 +2,9 @@
 
 define('PPP_BAREWORD',     'PPP_Token_Bareword');
 define('PPP_VARIABLE',     'PPP_Token_Variable');
-define('PPP_PUNCTUATION',  'PPP_Token_Punctuation');
+define('PPP_OPERATOR',     'PPP_Token_Operator');
+define('PPP_OPERATOR_RETURN', 'PPP_Token_Operator_Return');
+define('PPP_OPERATOR_COLON',  'PPP_Token_Operator_Colon');
 define('PPP_SELF',         'PPP_Token_Self');
 define('PPP_STRING',       'PPP_Token_String');
 define('PPP_WHITESPACE',   'PPP_Token_Whitespace');
@@ -21,6 +23,8 @@ define('PPP_RESERVED_BLOCK', 'PPP_Token_Reserved_Block');
 define('PPP_RESERVED_CATCH', 'PPP_Token_Reserved_Catch');
 define('PPP_RESERVED_STD',   'PPP_Token_Reserved_Standard');
 define('PPP_RESERVED_ELIF',  'PPP_Token_Reserved_Elif');
+define('PPP_VARIABLE_ARRAY', 'PPP_Token_Variable_Array');
+define('PPP_VARIABLE_ARRAY_CLOSE', 'PPP_Token_Variable_ArrayClose');
 
 define('IS_REGEX',    4500);
 define('IS_MATCH',    4501);
@@ -28,28 +32,25 @@ define('IS_IN_LIST',  4502);
 define('IS_RESERVED', 4503);
 
 define('PPP_JSON_RESERVED_STANDARD', json_encode($reserved_std));
-define('PPP_JSON_RESERVED_WORDS', json_encode($reserved_words));
-define('PPP_JSON_PUNCTUATION',    json_encode($punctuation));
-define('PPP_JSON_BOOLEANS',       json_encode($booleans));
+define('PPP_JSON_RESERVED_BLOCK',    json_encode($reserved_words));
+define('PPP_JSON_OPERATOR',          json_encode($operator));
+define('PPP_JSON_BOOLEANS',          json_encode($booleans));
 
 abstract class PPP_Token {
 
 
     private static $definitions = array(
         IS_RESERVED => array(
-            'if'  => PPP_RESERVED_IF,
-            'def' => PPP_RESERVED_DEF,
-            'try' => PPP_RESERVED_BLOCK,
-            'else' => PPP_RESERVED_BLOCK,
-            'class' => PPP_RESERVED_BLOCK,
+            'if'    => PPP_RESERVED_IF,
+            'def'   => PPP_RESERVED_DEF,
             'catch' => PPP_RESERVED_CATCH,
             'elif'  => PPP_RESERVED_ELIF,
         ),
         IS_IN_LIST => array(
             PPP_JSON_RESERVED_STANDARD => PPP_RESERVED_STD,
-            PPP_JSON_RESERVED_WORDS => PPP_RESERVED,
-            PPP_JSON_BOOLEANS       => PPP_BOOLEAN,
-            PPP_JSON_PUNCTUATION    => PPP_PUNCTUATION,
+            PPP_JSON_RESERVED_BLOCK    => PPP_RESERVED_BLOCK,
+            PPP_JSON_BOOLEANS          => PPP_BOOLEAN,
+            PPP_JSON_OPERATOR          => PPP_OPERATOR,
         ),
         IS_REGEX => array(
             '/^[a-zA-Z]/'                 => PPP_BAREWORD,  
@@ -61,7 +62,13 @@ abstract class PPP_Token {
             "/^'[^(\')]*'$/"              => PPP_STRING,
         ),
         IS_MATCH => array(
+            '['   => PPP_VARIABLE_ARRAY,
+            '{'   => PPP_VARIABLE_ARRAY,
+            ']'   => PPP_VARIABLE_ARRAY_CLOSE,
+            '}'   => PPP_VARIABLE_ARRAY_CLOSE,
             ''    => PPP_WHITESPACE,
+            '<-'  => PPP_OPERATOR_RETURN,
+            ':'   => PPP_OPERATOR_COLON,
             '.'   => PPP_DOT,
             '@'   => PPP_SELF,
             '###' => PPP_BLOCKQUOTES,
@@ -168,50 +175,55 @@ class PPP_Token_Dot extends PPP_Token {
     }
 }
 
-class PPP_Token_Punctuation extends PPP_Token {
+class PPP_Token_Operator extends PPP_Token {
+
+}
+
+class PPP_Token_Operator_Colon extends PPP_Token_Operator {
 
     public function parse($parser) {
+        $parser->token_list[] = ($parser->array_stack) ? '=>' : ':';
+    }
+}
+
+class PPP_Token_Operator_Return extends PPP_Token_Operator {
+    public function parse($parser) {
+        $parser->token_list[] = 'return';
+    }    
+}
+
+class PPP_Token_Variable_Array extends PPP_Token_Variable {
+    public function parse($parser) {
         switch ($this->value) {
-        case ':':
-            if ($parser->array_stack) {
-                $parser->token_list[] = '=>';
-            } else {
-                $parser->token_list[] = ':';
-            }
-            break;
-        case '{':
-            $parser->token_list[] = 'array(';
-            $parser->array_stack++;
-            break;
         case '[':
             if ($parser->prev_token && $parser->prev_token->is(PPP_VARIABLE)) {
                 $parser->bracket_stack[] = PPP_BRACKET_PROP;
                 $parser->token_list[] = '[';
-            } else {
-                $parser->bracket_stack[] = PPP_BRACKET_ARRAY;
-                $parser->token_list[] = 'array(';
-                $parser->array_stack++;
+                break;
             }
+
+            $parser->bracket_stack[] = PPP_BRACKET_ARRAY;
+        case '{':
+            $parser->token_list[] = 'array(';
+            $parser->array_stack++;
             break;
+        }
+    }
+}
+
+class PPP_Token_Variable_ArrayClose extends PPP_Token_Variable {
+    public function parse($parser) {
+        switch ($this->value) {
+        case ']':
+            $popped = array_pop($parser->bracket_stack);
+            if ($popped !== PPP_BRACKET_ARRAY) {
+                $parser->token_list[] = ']';
+                break;
+            }
         case '}':
             $parser->token_list[] = ')';
             $parser->array_stack--;
             break;
-        case ']':
-            $popped = array_pop($parser->bracket_stack);
-            if ($popped == PPP_BRACKET_ARRAY) {
-                $parser->token_list[] = ')';
-                $parser->array_stack--;
-            } else {
-                $parser->token_list[] = ']';
-            }
-            break;
-
-        case '<-':
-            $parser->token_list[] = 'return';
-            break;
-        default:
-            parent::parse($parser);
         }
     }
 }
