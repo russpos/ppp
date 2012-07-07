@@ -7,77 +7,62 @@ require_once 'tokens.php';
 define('PPP_BRACKET_ARRAY', 301);
 define('PPP_BRACKET_PROP',  302);
 
-function interlock($parts, $with) {
-    $locks = array();
-    foreach($parts as $part) {
-        $locks[] = $part;
-        $locks[] = $with;
-    }
-    return $locks;
-}
 
-function tokenizer($string) {
-    $tokens = array();
-    $string = trim($string);
-
-
-
-    $parts = preg_split('#(\"[^\"]*\")|(\'[^\']*\')|(\#\#\#)|(\<\-)|(\-\>)|(\s+|\.|:|\]|\[|,|\(|\))#', $string, null, PREG_SPLIT_DELIM_CAPTURE);
-    foreach ($parts as $sub) {
-        $token = Token::generate($sub);
-        if (!empty($token)) {
-            $tokens[] = $token;
-        }
-    }
-    return $tokens;
-}
-
-function tabs($number=0) {
-    if ($number == 0) {
-        return '';
-    }
-    return implode('', array_fill(0, $number*4, ' '));
-}
-
-class ParserException_TokenBreak extends Exception { }
-class ParserException_TokenContinue extends Exception { }
+class PPP_ParserException_TokenBreak extends Exception { }
+class PPP_ParserException_TokenContinue extends Exception { }
 
 class PPP_Parser {
 
+    const TOKENIZE_REGEX = '#(\"[^\"]*\")|(\'[^\']*\')|(\#\#\#)|(\<\-)|(\-\>)|(\s+|\.|:|\]|\[|,|\(|\))#';
+
+    protected static function tokenize($string) {
+        $tokens = array();
+        $string = trim($string);
+
+        $parts = preg_split(self::TOKENIZE_REGEX, $string, null, PREG_SPLIT_DELIM_CAPTURE);
+        foreach ($parts as $sub) {
+            $token = PPP_Token::generate($sub);
+            if (!empty($token)) {
+                $tokens[] = $token;
+            }
+        }
+        return $tokens;
+    }
+
     protected function indent($count) {
-        $this->id['count']++;
-        $this->id['stack'][] = $count;
-        $this->id['cur_spaces'] = $count;
+        $this->indentation['count']++;
+        $this->indentation['stack'][] = $count;
+        $this->indentation['cur_spaces'] = $count;
     }
 
     protected function dedent($print = false) {
-        $this->id['count']--;
-        array_pop($this->id['stack']);
-        if (empty($this->id['stack'])) {
-            $this->id['cur_spaces'] = 0;
+        $this->indentation['count']--;
+        array_pop($this->indentation['stack']);
+        if (empty($this->indentation['stack'])) {
+            $this->indentation['cur_spaces'] = 0;
         }
         if ($print) {
             $this->output[] = $this->tabs(0, false)."}";
         }
 
-        if (!empty($this->id['cur_spaces'])) {
-            $this->id['cur_spaces'] = $this->id['stack'][count($this->id['stack'])-1];
+        if (!empty($this->indentation['cur_spaces'])) {
+            $this->indentation['cur_spaces'] = $this->indentation['stack'][count($this->indentation['stack'])-1];
         }
     }
 
     protected function match_indentation($count) {
-        if ($count == $this->id['cur_spaces']) {
+        if ($count == $this->indentation['cur_spaces']) {
             return;
-        } else if ($count > $this->id['cur_spaces']) {
+        } else if ($count > $this->indentation['cur_spaces']) {
             $this->indent($count);
-        } else if ($count < $this->id['cur_spaces']) {
+        } else if ($count < $this->indentation['cur_spaces']) {
             $this->dedent(true);
             $this->match_indentation($count);
         }
     }
 
     protected function tabs($offset, $write = true) {
-        $number = $this->id['count']+$this->array_stack+$offset;
+        $number = $this->indentation['count']+$this->array_stack+$offset;
         if ($number == 0) {
             return '';
         }
@@ -101,16 +86,16 @@ class PPP_Parser {
         if ($this->token->is(PPP_BLOCKQUOTES)) {
             $this->in_block_quotes = !$this->in_block_quotes;
             $this->token_list[] = ($this->in_block_quotes) ? '/*' : '*/';
-            throw new ParserException_TokenContinue();
+            throw new PPP_ParserException_TokenContinue();
         }
         if ($this->in_block_quotes) {
             $this->token_list[] = $this->token->value;
-            throw new ParserException_TokenContinue();
+            throw new PPP_ParserException_TokenContinue();
         }
     }
 
     protected function reset_indentation() {
-        $this->id = array(
+        $this->indentation = array(
             'stack' => array(),
             'level' => array(),
             'count' => 0,
@@ -166,7 +151,7 @@ class PPP_Parser {
             }
 
 
-            $this->tokens = tokenizer($line);
+            $this->tokens = self::tokenize($line);
             if ($this->reset) {
                 $this->reset_state();
             }
@@ -216,9 +201,9 @@ class PPP_Parser {
                             $this->token_list[] = ';';
                         }
                     }
-                } catch (ParserException_TokenBreak $e) {
+                } catch (PPP_ParserException_TokenBreak $e) {
                     break;
-                } catch (ParserException_TokenContinue $e) {
+                } catch (PPP_ParserException_TokenContinue $e) {
                     continue;
                 }
             }
@@ -230,10 +215,10 @@ class PPP_Parser {
             }
 
         }
-        while ($this->id['count']) {
+        while ($this->indentation['count']) {
             $this->dedent(true);
         }
-        $printer =  implode("\n", $this->output);
+        $printer =  implode(PHP_EOL, $this->output);
         return $printer;
     }
 }

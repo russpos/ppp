@@ -1,7 +1,10 @@
 <?php
 
-$punctuation = array(':', '(', ',', ')', '.', '=', '->', '[', ']', '{', '}', '+', '<-', '-');
-$reserved_words = array('public', 'class', 'extends', 'const', 'private', 'else', 'try', 'catch', 'throw', 'elif', 'if', 'static', 'def', 'new');
+$punctuation = array(':', '(', ',', ')', '=', '->', '[', ']', '{', '}', '+', '<-', '-');
+$reserved_words = array('class','catch', 'elif');
+
+$reserved_std = array('public', 'extends', 'const', 'private', 'throw', 'static', 'new');
+
 $booleans = array('yes', 'no', 'on', 'off', 'nil', 'none', 'true', 'false');
 $synonyms = array(
     'on'   => 'true',
