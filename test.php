@@ -21,7 +21,7 @@ function echocolor($text,$color="normal",$back=0)
 } 
 
 
-require 'source/parser.php';
+require 'source/ppp.php';
 
 $parser = new PPP_Parser();
 

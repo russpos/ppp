@@ -1,4 +1,5 @@
 <?php
+PPP::import("foo/bar");
 
 class Foo {
 

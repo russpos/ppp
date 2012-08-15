@@ -1,13 +1,7 @@
 <?php
-define('PPP_VERSION', '0.0.3');
-
-require_once 'globals.php';
 require_once 'tokens.php';
 
 // States
-define('PPP_BRACKET_ARRAY', 301);
-define('PPP_BRACKET_PROP',  302);
-
 
 class PPP_ParserException_TokenBreak extends Exception { }
 class PPP_ParserException_TokenContinue extends Exception { }
@@ -30,10 +24,37 @@ class PPP_Parser {
         return $tokens;
     }
 
+    public function __construct($opts=array()) {
+        $defaults = array(
+                'init' => true
+            );
+
+        $this->opts = array_merge($defaults, $opts);
+    }
+
     protected function indent($count) {
         $this->indentation['count']++;
         $this->indentation['stack'][] = $count;
         $this->indentation['cur_spaces'] = $count;
+    }
+
+    public function parseFile($file, $outfile = false) {
+        // Verify contents of the file
+        $contents = file_get_contents($file);
+        if (empty($contents)) {
+            return false;
+        }
+
+        // Create a parser and parse the contents
+        $parsed = $this->parse($contents);
+        if ($outfile) {
+            if (file_put_contents($outfile, $parsed)) {
+                return true;
+            } else {
+                return false;
+            }
+        }
+        return $parsed;
     }
 
     protected function dedent($print = false) {
@@ -84,7 +105,7 @@ class PPP_Parser {
     }
 
     protected function blockQuotes() {
-        if ($this->token->is(PPP_BLOCKQUOTES)) {
+        if ($this->token->is(PPP::BLOCKQUOTES)) {
             $this->in_block_quotes = !$this->in_block_quotes;
             $this->token_list[] = ($this->in_block_quotes) ? '/*' : '*/';
             throw new PPP_ParserException_TokenContinue();
@@ -109,7 +130,7 @@ class PPP_Parser {
         $next_token_num = $this->cur_token;
         while ((++$next_token_num < $this->token_count) && empty($next_token)) {
             $possible_next_token = $this->tokens[$next_token_num];
-            if ($possible_next_token->type !== PPP_WHITESPACE) {
+            if ($possible_next_token->type !== PPP::WHITESPACE) {
                 $next_token = $possible_next_token;
                 break;
             }
@@ -118,16 +139,19 @@ class PPP_Parser {
     }
 
     public function parse($content) {
-        global $synonyms;
-
+        $synonyms = PPP::$synonyms;
+        $synonym_list = PPP::synonym_list();
         $lines = explode("\n", $content);
 
-        $this->output = array("<?php");
+        if ($this->opts['init']) {
+            $this->output = array("<?php");
+        } else {
+            $this->output = array();
+        }
 
         $this->in_block_quotes = false;
 
         $this->reset = true;
-        $synonym_list = array_keys($synonyms);
 
         $this->cur_token = 0;
         $this->token_count = 0;

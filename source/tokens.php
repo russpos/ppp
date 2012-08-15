@@ -1,77 +1,46 @@
 <?php
 
-define('PPP_BAREWORD',     'PPP_Token_Bareword');
-define('PPP_VARIABLE',     'PPP_Token_Variable');
-define('PPP_OPERATOR',     'PPP_Token_Operator');
-define('PPP_OPERATOR_RETURN', 'PPP_Token_Operator_Return');
-define('PPP_OPERATOR_COLON',  'PPP_Token_Operator_Colon');
-define('PPP_SELF',         'PPP_Token_Self');
-define('PPP_STRING',       'PPP_Token_String');
-define('PPP_WHITESPACE',   'PPP_Token_Whitespace');
-define('PPP_INDENTATION',  'PPP_Token_Indentation');
-define('PPP_PROPERTY',     'PPP_Token_Property');
-define('PPP_UNKNOWN',      'PPP_Token_Unknown');
-define('PPP_RESERVED',     'PPP_Token_Reserved');
-define('PPP_BLOCKQUOTES',  'PPP_Token_Blockquotes');
-define('PPP_BOOLEAN',      'PPP_Token_Boolean');
-define('PPP_NUMBER',       'PPP_Token_Number');
-define('PPP_STATIC_SELF',  'PPP_Token_StaticSelf');
-define('PPP_RESERVED_IF',  'PPP_Token_Reserved_If');
-define('PPP_RESERVED_DEF', 'PPP_Token_Reserved_Def');
-define('PPP_DOT',          'PPP_Token_Dot');
-define('PPP_RESERVED_BLOCK', 'PPP_Token_Reserved_Block');
-define('PPP_RESERVED_CATCH', 'PPP_Token_Reserved_Catch');
-define('PPP_RESERVED_STD',   'PPP_Token_Reserved_Standard');
-define('PPP_RESERVED_ELIF',  'PPP_Token_Reserved_Elif');
-define('PPP_VARIABLE_ARRAY', 'PPP_Token_Variable_Array');
-define('PPP_VARIABLE_ARRAY_CLOSE', 'PPP_Token_Variable_ArrayClose');
-
-define('IS_REGEX',    4500);
-define('IS_MATCH',    4501);
-define('IS_IN_LIST',  4502);
-define('IS_RESERVED', 4503);
-
-define('PPP_JSON_RESERVED_STANDARD', json_encode($reserved_std));
-define('PPP_JSON_RESERVED_BLOCK',    json_encode($reserved_words));
-define('PPP_JSON_OPERATOR',          json_encode($operator));
-define('PPP_JSON_BOOLEANS',          json_encode($booleans));
+define('PPP_JSON_RESERVED_STANDARD', json_encode(PPP::$reserved_std));
+define('PPP_JSON_RESERVED_BLOCK',    json_encode(PPP::$reserved_words));
+define('PPP_JSON_OPERATOR',          json_encode(PPP::$operator));
+define('PPP_JSON_BOOLEANS',          json_encode(PPP::$booleans));
 
 abstract class PPP_Token {
 
 
     private static $definitions = array(
-        IS_RESERVED => array(
-            'if'    => PPP_RESERVED_IF,
-            'def'   => PPP_RESERVED_DEF,
-            'catch' => PPP_RESERVED_CATCH,
-            'elif'  => PPP_RESERVED_ELIF,
+        PPP::IS_RESERVED => array(
+            'if'    => PPP::RESERVED_IF,
+            'def'   => PPP::RESERVED_DEF,
+            'catch' => PPP::RESERVED_CATCH,
+            'elif'  => PPP::RESERVED_ELIF,
         ),
-        IS_IN_LIST => array(
-            PPP_JSON_RESERVED_STANDARD => PPP_RESERVED_STD,
-            PPP_JSON_RESERVED_BLOCK    => PPP_RESERVED_BLOCK,
-            PPP_JSON_BOOLEANS          => PPP_BOOLEAN,
-            PPP_JSON_OPERATOR          => PPP_OPERATOR,
+        PPP::IS_IN_LIST => array(
+            PPP_JSON_RESERVED_STANDARD => PPP::RESERVED_STD,
+            PPP_JSON_RESERVED_BLOCK    => PPP::RESERVED_BLOCK,
+            PPP_JSON_BOOLEANS          => PPP::BOOLEAN,
+            PPP_JSON_OPERATOR          => PPP::OPERATOR,
         ),
-        IS_REGEX => array(
-            '/^[a-zA-Z]/'                 => PPP_BAREWORD,  
-            '/^\$[a-zA-Z][A-Za-z0-9_]*$/' => PPP_VARIABLE,
-            '/^[0-9]+$/'                  => PPP_NUMBER,
-            '/^@@\$?[a-zA-Z_]+$/'         => PPP_STATIC_SELF,
-            '/@[a-zA-Z_]+/'               => PPP_PROPERTY,
-            '/^"[^(\")]*"$/'              => PPP_STRING,
-            "/^'[^(\')]*'$/"              => PPP_STRING,
+        PPP::IS_REGEX => array(
+            '/^[a-zA-Z]/'                 => PPP::BAREWORD,  
+            '/^\$[a-zA-Z][A-Za-z0-9_]*$/' => PPP::VARIABLE,
+            '/^[0-9]+$/'                  => PPP::NUMBER,
+            '/^@@\$?[a-zA-Z_]+$/'         => PPP::STATIC_SELF,
+            '/@[a-zA-Z_]+/'               => PPP::PROPERTY,
+            '/^"[^(\")]*"$/'              => PPP::STRING,
+            "/^'[^(\')]*'$/"              => PPP::STRING,
         ),
-        IS_MATCH => array(
-            '['   => PPP_VARIABLE_ARRAY,
-            '{'   => PPP_VARIABLE_ARRAY,
-            ']'   => PPP_VARIABLE_ARRAY_CLOSE,
-            '}'   => PPP_VARIABLE_ARRAY_CLOSE,
-            ''    => PPP_WHITESPACE,
-            '<-'  => PPP_OPERATOR_RETURN,
-            ':'   => PPP_OPERATOR_COLON,
-            '.'   => PPP_DOT,
-            '@'   => PPP_SELF,
-            '###' => PPP_BLOCKQUOTES,
+        PPP::IS_MATCH => array(
+            '['   => PPP::VARIABLE_ARRAY,
+            '{'   => PPP::VARIABLE_ARRAY,
+            ']'   => PPP::VARIABLE_ARRAY_CLOSE,
+            '}'   => PPP::VARIABLE_ARRAY_CLOSE,
+            ''    => PPP::WHITESPACE,
+            '<-'  => PPP::OPERATOR_RETURN,
+            ':'   => PPP::OPERATOR_COLON,
+            '.'   => PPP::DOT,
+            '@'   => PPP::SELF,
+            '###' => PPP::BLOCKQUOTES,
         )
     );
 
@@ -98,16 +67,16 @@ abstract class PPP_Token {
 
     private static function compare($method, $test, $matcher) {
         switch ($method) {
-        case IS_RESERVED: return ($test == $matcher);         break;
-        case IS_IN_LIST:  return (in_array($matcher, json_decode($test))); break;
-        case IS_MATCH:    return ($test == $matcher);         break;
-        case IS_REGEX:    return preg_match($test, $matcher); break;
+        case PPP::IS_RESERVED: return ($test == $matcher);         break;
+        case PPP::IS_IN_LIST:  return (in_array($matcher, json_decode($test))); break;
+        case PPP::IS_MATCH:    return ($test == $matcher);         break;
+        case PPP::IS_REGEX:    return preg_match($test, $matcher); break;
         }
     }
 
     protected function functionCall($parser) {
         if (!$parser->is_in_catch && $parser->next_token &&
-                $parser->next_token->is(PPP_STRING, PPP_NUMBER, PPP_STATIC_SELF, PPP_BOOLEAN, PPP_BAREWORD, PPP_VARIABLE, PPP_SELF, PPP_PROPERTY)) {
+                $parser->next_token->is(PPP::STRING, PPP::NUMBER, PPP::STATIC_SELF, PPP::BOOLEAN, PPP::BAREWORD, PPP::VARIABLE, PPP::SELF, PPP::PROPERTY)) {
             $parser->token_list[] = '(';
             $parser->open_stack[] = ')';
         }
@@ -126,20 +95,20 @@ abstract class PPP_Token {
                 }
             }
         }
-        return self::create($str, PPP_UNKNOWN);
+        return self::create($str, PPP::UNKNOWN);
     }
 }
 
 class PPP_Token_Blockquotes extends PPP_Token {
     protected function defaultType() {
-        return PPP_BLOCKQUOTES;
+        return PPP::BLOCKQUOTES;
     }
 }
 
 class PPP_Token_Bareword extends PPP_Token {
 
     protected function defaultType() {
-        return PPP_BAREWORD;
+        return PPP::BAREWORD;
     }
 
     public function parse($parser) {
@@ -167,7 +136,7 @@ class PPP_Token_Variable extends PPP_Token {
 class PPP_Token_Dot extends PPP_Token {
 
     public function parse($parser) {
-        if ($parser->next_token->is(PPP_BAREWORD)) {
+        if ($parser->next_token->is(PPP::BAREWORD)) {
             $parser->token_list[] = '->';
         } else {
             $parser->token_list[] = $this->value;
@@ -196,13 +165,13 @@ class PPP_Token_Variable_Array extends PPP_Token_Variable {
     public function parse($parser) {
         switch ($this->value) {
         case '[':
-            if ($parser->prev_token && $parser->prev_token->is(PPP_VARIABLE)) {
-                $parser->bracket_stack[] = PPP_BRACKET_PROP;
+            if ($parser->prev_token && $parser->prev_token->is(PPP::VARIABLE)) {
                 $parser->token_list[] = '[';
+                $parser->bracket_stack[] = null;
                 break;
             }
 
-            $parser->bracket_stack[] = PPP_BRACKET_ARRAY;
+            $parser->bracket_stack[] = PPP::BRACKET_ARRAY;
         case '{':
             $parser->token_list[] = 'array(';
             $parser->array_stack++;
@@ -216,7 +185,7 @@ class PPP_Token_Variable_ArrayClose extends PPP_Token_Variable {
         switch ($this->value) {
         case ']':
             $popped = array_pop($parser->bracket_stack);
-            if ($popped !== PPP_BRACKET_ARRAY) {
+            if ($popped !== PPP::BRACKET_ARRAY) {
                 $parser->token_list[] = ']';
                 break;
             }
@@ -308,9 +277,8 @@ class PPP_Token_Reserved_Block extends PPP_Token_Reserved {
 class PPP_Token_Boolean extends PPP_Token {
 
     public function parse($parser) {
-        global $synonym_list, $synonyms;
-        if (in_array($this->value, $synonym_list)) {
-            $parser->token_list[] = $synonyms[$this->value];
+        if (in_array($this->value, PPP::synonym_list())) {
+            $parser->token_list[] = PPP::$synonyms[$this->value];
         } else {
             $parser->token_list[] = $this->value;
         }
