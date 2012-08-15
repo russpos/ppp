@@ -1,4 +1,5 @@
 <?php
+define('PPP_VERSION', '0.0.3');
 
 require_once 'globals.php';
 require_once 'tokens.php';
